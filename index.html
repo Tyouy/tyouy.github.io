@@ -581,7 +581,57 @@
       text-align: center;
       color: var(--text-muted);
       font-size: 15px;
-      margin: 0 0 28px;
+      margin: 0 0 14px;
+    }
+
+    .publication-filters {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 8px;
+    }
+
+    .publication-filter {
+      appearance: none;
+      border: 1px solid #b9c7dc;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #334155;
+      padding: 8px 15px;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.25;
+      cursor: pointer;
+      transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .publication-filter:hover {
+      color: var(--blue);
+      border-color: #8eaada;
+      background: var(--blue-light);
+    }
+
+    .publication-filter:focus-visible {
+      outline: 3px solid rgba(23, 79, 159, 0.2);
+      outline-offset: 2px;
+    }
+
+    .publication-filter.active {
+      color: #ffffff;
+      background: var(--blue);
+      border-color: var(--blue);
+      box-shadow: 0 5px 14px rgba(23, 79, 159, 0.2);
+    }
+
+    .publication-filter-status {
+      min-height: 22px;
+      margin: 0 0 12px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
     }
 
     .publication-list {
@@ -598,6 +648,10 @@
     .publication-item:last-child {
       border-bottom: none;
       padding-bottom: 0;
+    }
+
+    .publication-item.is-filtered-out {
+      display: none;
     }
 
     .pub-title {
@@ -1092,6 +1146,18 @@
         <h2>Publications</h2>
         <p class="pub-note"><sup>†</sup> equal contribution, * corresponding author</p>
 
+        <div class="publication-filters" role="group" aria-label="Filter publications by lab">
+          <button class="publication-filter" type="button" data-lab-filter="lui" aria-pressed="false">
+            Lui Lab (PHD period)
+          </button>
+          <button class="publication-filter" type="button" data-lab-filter="shi" aria-pressed="false">
+            Shi Lab (Postdoc period)
+          </button>
+        </div>
+        <p class="publication-filter-status" id="publication-filter-status" aria-live="polite">
+          Showing all publications
+        </p>
+
          <div class="publication-item">
             <div class="pub-title">
               <a href="https://arxiv.org/pdf/2608.01553" target="_blank">
@@ -1335,7 +1401,62 @@
       startAutoSlide();
     }
 
+    function initializePublicationFilters() {
+      const publicationSection = document.getElementById('publications');
+      if (!publicationSection) return;
+
+      const publications = Array.from(publicationSection.querySelectorAll('.publication-item'));
+      const filterButtons = Array.from(publicationSection.querySelectorAll('.publication-filter'));
+      const filterStatus = document.getElementById('publication-filter-status');
+      let activeLab = null;
+
+      publications.forEach(publication => {
+        const authorText = publication.querySelector('.pub-authors')?.textContent || '';
+        const labs = [];
+
+        if (/Chun Hung Lui\s*\*/i.test(authorText)) labs.push('lui');
+        if (/Su-Fei Shi\s*\*/i.test(authorText)) labs.push('shi');
+
+        publication.dataset.labs = labs.join(' ');
+      });
+
+      function applyPublicationFilter(lab) {
+        activeLab = activeLab === lab ? null : lab;
+        let visibleCount = 0;
+
+        publications.forEach(publication => {
+          const publicationLabs = publication.dataset.labs.split(' ').filter(Boolean);
+          const isVisible = !activeLab || publicationLabs.includes(activeLab);
+          publication.classList.toggle('is-filtered-out', !isVisible);
+          if (isVisible) visibleCount += 1;
+        });
+
+        filterButtons.forEach(button => {
+          const isActive = button.dataset.labFilter === activeLab;
+          button.classList.toggle('active', isActive);
+          button.setAttribute('aria-pressed', String(isActive));
+        });
+
+        if (filterStatus) {
+          if (!activeLab) {
+            filterStatus.textContent = `Showing all ${visibleCount} publications`;
+          } else {
+            const activeButton = filterButtons.find(button => button.dataset.labFilter === activeLab);
+            const labName = activeButton ? activeButton.textContent.trim() : activeLab;
+            filterStatus.textContent = `Showing ${visibleCount} ${labName} publications · click again to show all`;
+          }
+        }
+      }
+
+      filterButtons.forEach(button => {
+        button.addEventListener('click', () => applyPublicationFilter(button.dataset.labFilter));
+      });
+
+      applyPublicationFilter(null);
+    }
+
     // Start the carousel when the homepage first loads.
+    initializePublicationFilters();
     startAutoSlide();
   </script>
 </body>
